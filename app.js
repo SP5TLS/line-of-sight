@@ -445,7 +445,7 @@ function processLOS() {
         el.className = `badge badge-lg gap-2 font-bold py-4 ${badgeClass}`;
     });
     
-    if (pathLine) pathLine.setStyle({ color: obstructed ? '#ef4444' : '#10b981' });
+    if (pathLine) pathLine.setStyle({ color: obstructed ? '#f97316' : '#10b981' });
 }
 
 function renderChart(profile, obstructed, fresnelObstructed) {
@@ -460,10 +460,12 @@ function renderChart(profile, obstructed, fresnelObstructed) {
 
     const hasFresnel = profile.some(p => p.fresnelR > 0);
     const fresnelColor = fresnelObstructed ? 'rgba(234, 179, 8, 0.5)' : 'rgba(234, 179, 8, 0.3)';
-    const losColor = obstructed ? '#ef4444' : '#10b981';
+    // Use orange (#f97316) for obstructed — distinguishable from green even with red-green color blindness
+    const losColor = obstructed ? '#f97316' : '#10b981';
     const datasets = [
         { label: 'Terrain', data: profile.map(p => p.y), borderColor: '#6b7280', fill: true, pointRadius: 0, borderWidth: 1 },
-        { label: 'Effective Earth', data: profile.map(p => p.effY), borderColor: '#3b82f6', fill: true, pointRadius: 0, borderWidth: 2 },
+        // Dashed line for Effective Earth — differentiates by pattern, not color alone
+        { label: 'Effective Earth', data: profile.map(p => p.effY), borderColor: '#3b82f6', borderDash: [6, 3], fill: true, pointRadius: 0, borderWidth: 2 },
         { label: 'LOS Ray', data: profile.map(p => p.losY), borderColor: losColor, borderWidth: 3, pointRadius: 0 }
     ];
 

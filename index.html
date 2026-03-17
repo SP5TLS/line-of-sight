@@ -24,8 +24,7 @@
     <style>
         #map { height: 100vh; width: 100%; z-index: 1; }
         .glass-panel {
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(8px);
+            background: var(--fallback-b2, oklch(var(--b2)));
         }
     </style>
 </head>
@@ -175,7 +174,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="h-48 w-full bg-base-300/30 rounded-lg p-2">
+                    <div class="h-48 w-full bg-base-300 rounded-lg p-2">
                         <canvas id="elevationChartDesktop"></canvas>
                     </div>
                 </div>
