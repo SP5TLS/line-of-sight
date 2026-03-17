@@ -1,0 +1,86 @@
+/* Custom Leaflet Dark/Light Mode for Geocoder */
+.leaflet-control-geocoder {
+    background: var(--fallback-b1,oklch(var(--b1))) !important;
+    border: 1px solid var(--fallback-b3,oklch(var(--b3))) !important;
+    color: var(--fallback-bc,oklch(var(--bc))) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+}
+
+[data-theme="dark"] .leaflet-control-geocoder-icon {
+    filter: invert(1);
+}
+
+.leaflet-control-geocoder-form input {
+    color: var(--fallback-bc,oklch(var(--bc))) !important;
+    background: transparent !important;
+}
+
+.leaflet-control-geocoder-alternatives {
+    background: var(--fallback-b1,oklch(var(--b1))) !important;
+    border-top: 1px solid var(--fallback-b3,oklch(var(--b3))) !important;
+}
+
+.leaflet-control-geocoder-alternatives li:hover {
+    background: var(--fallback-b2,oklch(var(--b2))) !important;
+}
+
+.leaflet-control-geocoder-alternatives a {
+    color: var(--fallback-bc,oklch(var(--bc))) !important;
+}
+
+/* Custom Div Icon for Markers */
+.custom-div-icon {
+    background: transparent;
+    border: none;
+}
+
+/* Tooltip style */
+.leaflet-tooltip {
+    background: var(--fallback-b1,oklch(var(--b1)));
+    border: 1px solid var(--fallback-b3,oklch(var(--b3)));
+    color: var(--fallback-bc,oklch(var(--bc)));
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+/* Ensure Leaflet standard controls match theme */
+.leaflet-bar a {
+    background-color: var(--fallback-b1,oklch(var(--b1))) !important;
+    color: var(--fallback-bc,oklch(var(--bc))) !important;
+    border-bottom: 1px solid var(--fallback-b3,oklch(var(--b3))) !important;
+}
+
+.leaflet-bar a:hover {
+    background-color: var(--fallback-b2,oklch(var(--b2))) !important;
+}
+
+/* Responsive chart height - align with Tailwind lg breakpoint (1024px) */
+@media (max-width: 1023px) {
+    #bottom-sheet {
+        transform: translateY(calc(100% - 3rem)); /* Show only handle (3rem = 48px) */
+    }
+    #bottom-sheet.expanded {
+        transform: translateY(0);
+    }
+}
+
+/* Hide scrollbar but allow scrolling in sheet */
+#sheet-content::-webkit-scrollbar {
+    display: none;
+}
+#sheet-content {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Marker target sizing for touch */
+.leaflet-marker-icon {
+    touch-action: none;
+}
+
+/* Transitions */
+.transition-transform {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}

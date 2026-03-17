@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radio LOS Tool</title>
+    <!-- Tailwind & DaisyUI -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.2/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet Geocoder -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Turf.js for Geo calculations -->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+        #map { height: 100vh; width: 100%; z-index: 1; }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(8px);
+        }
+    </style>
+</head>
+<body class="bg-base-300 overflow-hidden h-screen flex flex-col">
+    <!-- Main Map Area -->
+    <div class="flex-grow relative overflow-hidden">
+        <!-- Desktop Sidebar (Hidden on Mobile) -->
+        <aside id="desktop-sidebar" class="hidden lg:flex absolute left-0 top-0 z-[1001] bg-base-200 w-80 h-full p-6 flex-col gap-6 border-r border-base-100 shadow-2xl transition-transform duration-300 overflow-y-auto">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-emerald-500/10 rounded-lg">
+                        <i data-lucide="radio" class="text-emerald-500 w-8 h-8"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold" data-i18n="app.title">Line of Sight</h1>
+                        <p class="text-xs opacity-50 uppercase tracking-widest font-semibold" data-i18n="app.subtitle">Radio Operator Tool</p>
+                    </div>
+                </div>
+                <!-- Lang + Theme Toggles -->
+                <div class="flex items-center gap-1">
+                <button class="lang-toggle-btn btn btn-ghost btn-xs font-mono tracking-widest">EN</button>
+                <label class="swap swap-rotate btn btn-ghost btn-circle btn-sm">
+                    <input type="checkbox" id="theme-toggle" class="theme-controller" value="light" />
+                    <i data-lucide="sun" class="swap-on w-5 h-5"></i>
+                    <i data-lucide="moon" class="swap-off w-5 h-5"></i>
+                </label>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-4 pr-2">
+                <!-- Point A Controls -->
+                <div class="collapse collapse-arrow bg-base-300 border border-base-100 shadow-sm">
+                    <input type="radio" name="points-accordion-desktop" id="accordion-a" checked="checked" /> 
+                    <div class="collapse-title flex items-center gap-2 font-medium">
+                        <i data-lucide="map-pin" class="text-primary w-4 h-4"></i> <span data-i18n="point.a">Point A (Start)</span>
+                    </div>
+                    <div class="collapse-content space-y-4 pt-2">
+                        <div class="form-control w-full">
+                            <label class="label"><span class="label-text" data-i18n="height.label">Antenna Height (m)</span></label>
+                            <input type="number" id="height-a" value="2" min="0" class="input input-bordered w-full h-a-input" />
+                        </div>
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="opacity-70 coords-a-display" data-i18n="no.point">No point selected</span>
+                            <span class="font-bold text-primary locator-a-display"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Point B Controls -->
+                <div class="collapse collapse-arrow bg-base-300 border border-base-100 shadow-sm">
+                    <input type="radio" name="points-accordion-desktop" id="accordion-b" /> 
+                    <div class="collapse-title flex items-center gap-2 font-medium">
+                        <i data-lucide="map-pin" class="text-secondary w-4 h-4"></i> <span data-i18n="point.b">Point B (End)</span>
+                    </div>
+                    <div class="collapse-content space-y-4 pt-2">
+                        <div class="form-control w-full">
+                            <label class="label"><span class="label-text" data-i18n="height.label">Antenna Height (m)</span></label>
+                            <input type="number" id="height-b" value="2" min="0" class="input input-bordered w-full h-b-input" />
+                        </div>
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="opacity-70 coords-b-display" data-i18n="no.point">No point selected</span>
+                            <span class="font-bold text-secondary locator-b-display"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label">
+                        <span class="label-text flex items-center gap-2">
+                            <span data-i18n="freq.label">Frequency (MHz)</span>
+                            <div class="tooltip tooltip-bottom z-[2000]" data-tip="Used to calculate 60% Fresnel zone clearance. Set to 0 to disable." data-i18n-tip="tooltip.freq">
+                                <i data-lucide="help-circle" class="w-4 h-4 opacity-50"></i>
+                            </div>
+                        </span>
+                    </label>
+                    <input type="number" value="145" min="0" class="input input-bordered w-full freq-input" />
+                </div>
+
+                <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                        <input type="checkbox" id="k-factor" class="toggle toggle-emerald k-factor-toggle" checked />
+                        <span class="label-text flex items-center gap-2">
+                            <span data-i18n="kfactor.label">Radio Propagation (k=4/3)</span>
+                            <div class="tooltip tooltip-bottom z-[2000]" data-tip="Accounts for atmospheric refraction in VHF/UHF bands." data-i18n-tip="tooltip.kfactor">
+                                <i data-lucide="help-circle" class="w-4 h-4 opacity-50"></i>
+                            </div>
+                        </span>
+                    </label>
+                </div>
+
+                <button class="btn btn-primary w-full calculate-trigger shadow-lg">
+                    <i data-lucide="zap" class="w-4 h-4"></i> <span data-i18n="calculate.btn">Calculate LOS</span>
+                </button>
+            </div>
+
+            <!-- Desktop Metrics -->
+            <div class="grid grid-cols-1 gap-2 mt-auto pt-4 border-t border-base-100">
+                <div class="bg-base-300 p-3 rounded-lg border border-base-100 flex justify-between items-center">
+                    <p class="text-[10px] uppercase opacity-50 font-bold" data-i18n="distance.label">Distance</p>
+                    <p class="text-lg font-mono text-emerald-500 dist-display">0.00 km</p>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="bg-base-300 p-3 rounded-lg border border-base-100">
+                        <p class="text-[10px] uppercase opacity-50 font-bold text-primary" data-i18n="locator.a">A Locator</p>
+                        <p class="text-lg font-mono locator-a-display">------</p>
+                    </div>
+                    <div class="bg-base-300 p-3 rounded-lg border border-base-100">
+                        <p class="text-[10px] uppercase opacity-50 font-bold text-secondary" data-i18n="locator.b">B Locator</p>
+                        <p class="text-lg font-mono locator-b-display">------</p>
+                    </div>
+                    <div class="bg-base-300 p-3 rounded-lg border border-base-100">
+                        <p class="text-[10px] uppercase opacity-50 font-bold text-primary" data-i18n="bearing.ab">Bearing A→B</p>
+                        <p class="text-lg font-mono bearing-ab-display">0&deg;</p>
+                    </div>
+                    <div class="bg-base-300 p-3 rounded-lg border border-base-100">
+                        <p class="text-[10px] uppercase opacity-50 font-bold text-secondary" data-i18n="bearing.ba">Bearing B→A</p>
+                        <p class="text-lg font-mono bearing-ba-display">0&deg;</p>
+                    </div>
+                </div>
+                <button class="btn btn-outline btn-error btn-sm w-full clear-trigger mt-2">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i> <span data-i18n="clear.btn">Clear All</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Sidebar Toggle (Desktop) -->
+        <button id="sidebar-toggle" class="hidden lg:flex btn btn-circle btn-sm absolute left-80 top-4 z-[1002] ml-4 shadow-lg border-base-100 transition-all duration-300">
+            <i data-lucide="chevron-left"></i>
+        </button>
+
+        <!-- Map Container -->
+        <main id="map" class="w-full h-full"></main>
+
+        <!-- Desktop Results Panel (Restored) -->
+        <div id="results-panel-desktop" class="hidden lg:block absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-4xl z-[1000] px-4 transition-transform duration-300 translate-y-[120%]">
+            <div class="card glass-panel shadow-2xl border border-base-100/30">
+                <div class="card-body p-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <h2 class="card-title text-sm flex items-center gap-2">
+                            <i data-lucide="activity" class="text-emerald-500"></i>
+                            <span data-i18n="results.title">Elevation Profile</span>
+                        </h2>
+                        <div class="flex items-center gap-2">
+                            <div id="status-badge-desktop" class="badge badge-lg gap-2 font-bold py-4 badge-ghost opacity-30 uppercase tracking-widest text-[10px]">No Data</div>
+                            <button onclick="document.getElementById('results-panel-desktop').classList.add('translate-y-[120%]')" class="btn btn-ghost btn-xs btn-square">
+                                <i data-lucide="x"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="h-48 w-full bg-base-300/30 rounded-lg p-2">
+                        <canvas id="elevationChartDesktop"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loader overlay (Mobile & Desktop) -->
+        <div id="loader" class="absolute inset-0 flex items-center justify-center bg-base-300/30 z-[1005] backdrop-blur-sm hidden">
+            <div class="flex flex-col items-center gap-4 bg-base-200 p-8 rounded-2xl shadow-2xl border border-base-100">
+                <span class="loading loading-spinner loading-lg text-emerald-500"></span>
+                <p class="text-sm font-bold uppercase tracking-widest opacity-70" data-i18n="loader.text">Computing LOS...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Bottom Sheet (Foldable View) -->
+    <div id="bottom-sheet" class="lg:hidden fixed bottom-0 left-0 w-full z-[1003] transition-all duration-300 ease-in-out">
+        <!-- Handle Bar -->
+        <div id="sheet-handle" class="touch-none bg-base-200 h-12 flex items-center justify-center rounded-t-3xl border-t border-base-100 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] cursor-pointer">
+            <div class="w-12 h-1.5 bg-base-content/20 rounded-full"></div>
+        </div>
+        
+        <!-- Sheet Content -->
+        <div id="sheet-content" class="bg-base-200 px-4 overflow-y-auto flex flex-col gap-4" style="max-height: calc(100dvh - 3rem); padding-bottom: max(2rem, env(safe-area-inset-bottom))">
+            <!-- Point Selection for Mobile -->
+            <div class="grid grid-cols-2 gap-2 bg-base-300 p-1 rounded-xl border border-base-100">
+                <button id="mobile-select-a" class="btn btn-sm btn-primary no-animation rounded-lg" data-i18n="mobile.point-a">Point A</button>
+                <button id="mobile-select-b" class="btn btn-sm btn-ghost no-animation rounded-lg" data-i18n="mobile.point-b">Point B</button>
+            </div>
+
+            <!-- Mobile Header/Status -->
+            <div class="flex items-center justify-between py-2 border-b border-base-100/50">
+                <div id="status-badge-mobile" class="badge badge-lg gap-2 font-bold py-4 badge-ghost opacity-30 uppercase tracking-widest text-[10px]">No Data</div>
+                <div class="flex items-center gap-2">
+                    <button class="btn btn-primary btn-sm calculate-trigger shadow-lg font-bold">
+                        <i data-lucide="zap" class="w-4 h-4"></i> <span data-i18n="mobile.calculate">CALCULATE</span>
+                    </button>
+                    <button class="btn btn-circle btn-sm clear-trigger btn-ghost" title="Clear All">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Chart Section -->
+            <div class="w-full bg-base-300 rounded-xl p-2 border border-base-100">
+                <div class="h-48 w-full">
+                    <canvas id="elevationChartMobile"></canvas>
+                </div>
+            </div>
+
+            <!-- Controls Grid -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text-alt font-bold" data-i18n="mobile.antenna-a">ANTENNA A (m)</span></label>
+                    <input type="number" value="2" min="0" class="input input-sm input-bordered h-a-input" />
+                </div>
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text-alt font-bold" data-i18n="mobile.antenna-b">ANTENNA B (m)</span></label>
+                    <input type="number" value="2" min="0" class="input input-sm input-bordered h-b-input" />
+                </div>
+                <div class="form-control col-span-2">
+                    <label class="label py-1"><span class="label-text-alt font-bold" data-i18n="mobile.freq">FREQUENCY (MHz)</span></label>
+                    <input type="number" value="145" min="0" class="input input-sm input-bordered freq-input" />
+                </div>
+            </div>
+
+            <!-- Metrics -->
+            <div class="grid grid-cols-3 gap-2">
+                <div class="bg-base-300 p-2 rounded-lg border border-base-100 text-center">
+                    <p class="text-[8px] opacity-50 font-bold uppercase" data-i18n="mobile.dist">Dist</p>
+                    <p class="text-sm font-mono text-emerald-500 dist-display">0 km</p>
+                </div>
+                <div class="bg-base-300 p-2 rounded-lg border border-base-100 text-center">
+                    <p class="text-[8px] opacity-50 font-bold uppercase text-primary" data-i18n="mobile.loc-a">A Loc</p>
+                    <p class="text-xs font-mono locator-a-display">---</p>
+                </div>
+                <div class="bg-base-300 p-2 rounded-lg border border-base-100 text-center">
+                    <p class="text-[8px] opacity-50 font-bold uppercase text-secondary" data-i18n="mobile.loc-b">B Loc</p>
+                    <p class="text-xs font-mono locator-b-display">---</p>
+                </div>
+                <div class="bg-base-300 p-2 rounded-lg border border-base-100 text-center col-span-1">
+                    <p class="text-[8px] opacity-50 font-bold uppercase">A→B</p>
+                    <p class="text-sm font-mono bearing-ab-display">0°</p>
+                </div>
+                <div class="bg-base-300 p-2 rounded-lg border border-base-100 text-center col-span-1">
+                    <p class="text-[8px] opacity-50 font-bold uppercase">B→A</p>
+                    <p class="text-sm font-mono bearing-ba-display">0°</p>
+                </div>
+            </div>
+
+            <!-- Settings Accordion -->
+            <div class="collapse collapse-plus bg-base-300 border border-base-100">
+                <input type="checkbox" /> 
+                <div class="collapse-title text-sm font-bold flex items-center gap-2">
+                    <i data-lucide="settings" class="w-4 h-4"></i> <span data-i18n="settings.advanced">Advanced Settings</span>
+                </div>
+                <div class="collapse-content space-y-1">
+                    <label class="flex items-center justify-between py-1 cursor-pointer">
+                        <span class="text-xs opacity-50 flex items-center gap-1">
+                            <span data-i18n="settings.kfactor">Radio (k=4/3)</span>
+                            <div class="tooltip tooltip-right" data-tip="Accounts for atmospheric refraction in VHF/UHF bands." data-i18n-tip="tooltip.kfactor.mobile">
+                                <i data-lucide="help-circle" class="w-4 h-4 opacity-50"></i>
+                            </div>
+                        </span>
+                        <input type="checkbox" class="toggle toggle-sm toggle-emerald k-factor-toggle" checked />
+                    </label>
+                    <div class="flex items-center justify-between py-1">
+                        <span class="text-xs opacity-50" data-i18n="settings.theme">Theme Mode</span>
+                        <input type="checkbox" class="toggle toggle-sm theme-controller" id="theme-toggle-mobile" value="light" />
+                    </div>
+                    <div class="flex items-center justify-between py-1">
+                        <span class="text-xs opacity-50" data-i18n="settings.language">Language</span>
+                        <button class="lang-toggle-btn btn btn-ghost btn-xs font-mono tracking-widest">EN</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification for Errors -->
+    <div id="error-toast" class="toast toast-top toast-center z-[2000] hidden transition-all duration-300">
+        <div class="alert alert-error shadow-2xl border border-white/10">
+            <i data-lucide="alert-circle" class="w-5 h-5"></i>
+            <span id="error-message">Message here</span>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>
